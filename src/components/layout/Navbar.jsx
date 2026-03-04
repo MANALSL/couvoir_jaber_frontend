@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, KeyRound, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../ui/Modal';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({ onMenuClick }) => {
     const { user, logout, changePassword } = useAuth();
-    const [open, setOpen] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [showChange, setShowChange] = useState(false);
     const [currentPwd, setCurrentPwd] = useState('');
     const [newPwd, setNewPwd] = useState('');
@@ -16,20 +16,21 @@ const Navbar = ({ onMenuClick }) => {
 
     const handleLogout = () => {
         logout();
-        setOpen(false);
+        setDropdownOpen(false);
         navigate('/login');
     };
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
         if (newPwd !== confirmPwd) {
-            alert('Le nouveau mot de passe et la confirmation ne correspondent pas');
+            alert('Les mots de passe ne correspondent pas');
             return;
         }
         setSaving(true);
         try {
             await changePassword(currentPwd, newPwd);
-            setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); setShowChange(false);
+            setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
+            setShowChange(false);
             alert('Mot de passe mis à jour avec succès');
         } catch (err) {
             alert(err.message || 'Impossible de changer le mot de passe');
@@ -38,68 +39,115 @@ const Navbar = ({ onMenuClick }) => {
         }
     };
 
+    const initials = user?.username?.[0]?.toUpperCase() || 'A';
+    const roleLabel = user?.role === 'admin' ? 'Administrateur' : 'Gestionnaire';
+
     return (
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 h-16 px-6 flex items-center justify-between md:justify-end">
+        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 h-16 px-6 flex items-center justify-between">
+            {/* Mobile menu toggle */}
             <button
                 onClick={onMenuClick}
-                className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="md:hidden p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 rounded-lg transition-all"
             >
-                <Menu size={24} />
+                <Menu size={22} />
             </button>
 
-            <div className="flex items-center space-x-4">
-                <button onClick={() => setOpen(true)} className="flex items-center space-x-3 focus:outline-none">
-                    <div className="flex flex-col items-end">
-                        <span className="text-sm font-semibold text-gray-900">{user?.username || 'Admin'}</span>
-                        <span className="text-xs text-gray-500 capitalize">{user?.role || 'Administrator'}</span>
-                    </div>
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
-                        {user?.username?.[0]?.toUpperCase() || 'A'}
-                    </div>
+            {/* Right side */}
+            <div className="flex items-center gap-3 ml-auto">
+
+                {/* Notification bell (placeholder) */}
+                <button className="hidden sm:flex w-9 h-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all">
+                    <Bell size={18} />
                 </button>
-            </div>
 
-            <Modal isOpen={open} onClose={() => setOpen(false)} title="Profil Administrateur">
-                <div className="space-y-4">
-                    <div>
-                        <div className="text-sm text-gray-600">Nom</div>
-                        <div className="font-medium">{user?.username || 'Admin'}</div>
-                    </div>
-                    <div>
-                        <div className="text-sm text-gray-600">Rôle</div>
-                        <div className="font-medium capitalize">{user?.role || 'Administrator'}</div>
-                    </div>
-
-                    {!showChange && (
-                        <div className="space-y-2">
-                            <button onClick={() => setShowChange(true)} className="w-full bg-gray-100 text-gray-800 py-2 rounded-md hover:bg-gray-200">Modifier le mot de passe</button>
-                            <div className="pt-2">
-                                <button onClick={handleLogout} className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700">Se déconnecter</button>
-                            </div>
+                {/* User pill */}
+                <div className="relative">
+                    <button
+                        onClick={() => setDropdownOpen(o => !o)}
+                        className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-150"
+                    >
+                        {/* Avatar */}
+                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                            {initials}
                         </div>
-                    )}
+                        <div className="hidden sm:flex flex-col items-start leading-none">
+                            <span className="text-sm font-semibold text-slate-800">{user?.username || 'Admin'}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{roleLabel}</span>
+                        </div>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
 
-                    {showChange && (
-                        <form onSubmit={handleChangePassword} className="space-y-3">
-                            <div>
-                                <label className="text-sm text-gray-600">Mot de passe actuel</label>
-                                <input type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" />
+                    {/* Dropdown */}
+                    {dropdownOpen && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-modal z-20 overflow-hidden animate-fadeIn">
+                                {/* User info */}
+                                <div className="px-4 py-3 border-b border-slate-100">
+                                    <p className="text-sm font-semibold text-slate-800">{user?.username}</p>
+                                    <p className="text-xs text-slate-400">{user?.email}</p>
+                                </div>
+                                {/* Actions */}
+                                <div className="py-1">
+                                    <button
+                                        onClick={() => { setDropdownOpen(false); setShowChange(true); }}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                                    >
+                                        <KeyRound size={15} className="text-slate-400" />
+                                        Changer le mot de passe
+                                    </button>
+                                </div>
+                                <div className="py-1 border-t border-slate-100">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                        <LogOut size={15} className="text-red-500" />
+                                        Se déconnecter
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-sm text-gray-600">Nouveau mot de passe</label>
-                                <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" />
-                            </div>
-                            <div>
-                                <label className="text-sm text-gray-600">Confirmer le nouveau mot de passe</label>
-                                <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2" />
-                            </div>
-                            <div className="flex gap-2">
-                                <button type="submit" disabled={saving} className="flex-1 bg-primary-600 text-white py-2 rounded-md hover:bg-primary-700">{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
-                                <button type="button" onClick={() => setShowChange(false)} className="flex-1 bg-gray-100 text-gray-800 py-2 rounded-md hover:bg-gray-200">Annuler</button>
-                            </div>
-                        </form>
+                        </>
                     )}
                 </div>
+            </div>
+
+            {/* Change Password Modal */}
+            <Modal isOpen={showChange} onClose={() => setShowChange(false)} title="Changer le mot de passe">
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                    {[
+                        ['Mot de passe actuel', currentPwd, setCurrentPwd],
+                        ['Nouveau mot de passe', newPwd, setNewPwd],
+                        ['Confirmer le nouveau mot de passe', confirmPwd, setConfirmPwd],
+                    ].map(([label, val, setter]) => (
+                        <div key={label}>
+                            <label className="form-label">{label}</label>
+                            <input
+                                type="password"
+                                value={val}
+                                onChange={e => setter(e.target.value)}
+                                className="form-input"
+                                required
+                            />
+                        </div>
+                    ))}
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowChange(false)}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                        >
+                            {saving ? 'Enregistrement…' : 'Enregistrer'}
+                        </button>
+                    </div>
+                </form>
             </Modal>
         </header>
     );

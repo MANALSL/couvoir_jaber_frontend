@@ -1,24 +1,29 @@
 import api from './api';
+import { elevageService } from './elevageService';
 
 export const productionService = {
-    getProductionRecords: async (parcId = null) => {
-        const params = parcId ? { parc_id: parcId } : {};
-        const response = await api.get('/production/', { params });
+    // Re-use ferme/batiment/parc helpers from elevageService
+    getFermes: elevageService.getFermes,
+    getBatiments: elevageService.getBatiments,
+    getBatiment: elevageService.getBatiment,
+    getParcs: elevageService.getParcs,
+    getParc: elevageService.getParc,
+
+    // Production records
+    getRecords: async (filters = {}) => {
+        const response = await api.get('/production/', { params: filters });
         return response.data;
     },
-
-    createProductionRecord: async (record) => {
+    createRecord: async (record) => {
         const response = await api.post('/production/', record);
         return response.data;
     },
-
-    updateProductionRecord: async (id, updatedRecord) => {
-        const response = await api.put(`/production/${id}`, updatedRecord);
+    updateRecord: async (id, record) => {
+        const response = await api.put(`/production/${id}`, record);
         return response.data;
     },
-
-    deleteProductionRecord: async (id) => {
+    deleteRecord: async (id) => {
         const response = await api.delete(`/production/${id}`);
         return response.data;
-    }
+    },
 };

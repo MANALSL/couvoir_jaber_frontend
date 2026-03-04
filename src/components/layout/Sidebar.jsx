@@ -8,60 +8,71 @@ const Sidebar = () => {
     const { logout } = useAuth();
 
     const links = [
-        { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { name: 'Tableau de Bord', path: '/', icon: LayoutDashboard, exact: true },
         { name: 'Élevage', path: '/elevage', icon: Beef },
-        { name: 'Vaccination', path: '/vaccination', icon: Syringe },
         { name: 'Production', path: '/production', icon: Factory },
+        { name: 'Vaccination', path: '/vaccination', icon: Syringe },
     ];
 
     return (
-        <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0">
-            <div className="p-6 flex items-center justify-center border-b border-gray-100">
+        <aside className="hidden md:flex flex-col w-64 bg-white h-screen fixed left-0 top-0 border-r border-slate-200/80 shadow-[1px_0_0_0_#e2e8f0]">
+            {/* Logo area */}
+            <div className="flex items-center justify-center px-6 py-5 border-b border-slate-100">
                 <img
                     src="/logo.png"
                     alt="Couvoir Jaber"
-                    className="h-20 w-auto object-contain"
+                    className="h-16 w-auto object-contain"
                 />
             </div>
 
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {/* Navigation */}
+            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 py-2 mb-1">Menu principal</p>
                 {links.map((link) => {
                     const Icon = link.icon;
-                    const isActive = pathname === link.path;
+                    const isActive = link.exact
+                        ? pathname === link.path
+                        : pathname === link.path || pathname.startsWith(link.path + '/');
                     return (
                         <Link
                             key={link.path}
                             to={link.path}
                             className={clsx(
-                                'flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group',
+                                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative',
                                 isActive
-                                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             )}
                         >
-                            <Icon
-                                size={20}
-                                className={clsx(
-                                    'mr-3 transition-colors duration-200',
-                                    isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-500'
-                                )}
-                            />
-                            {link.name}
+                            {/* Active indicator bar */}
+                            {isActive && (
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white/40 rounded-r-full -ml-3" />
+                            )}
+                            <span className={clsx(
+                                'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                                isActive ? 'bg-white/15' : 'bg-slate-100 group-hover:bg-slate-200'
+                            )}>
+                                <Icon size={17} className={isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-700'} />
+                            </span>
+                            <span>{link.name}</span>
                         </Link>
                     );
                 })}
             </nav>
 
-            <div className="p-4 border-t border-gray-100">
+            {/* Footer */}
+            <div className="px-3 py-4 border-t border-slate-100">
                 <button
                     onClick={logout}
-                    className="flex w-full items-center px-4 py-3 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 transition-colors duration-200"
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 transition-all duration-150 group"
                 >
-                    <LogOut size={20} className="mr-3" />
-                    Déconnexion
+                    <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 group-hover:bg-red-100 transition-colors">
+                        <LogOut size={17} className="text-red-500" />
+                    </span>
+                    Se déconnecter
                 </button>
             </div>
-        </div>
+        </aside>
     );
 };
 

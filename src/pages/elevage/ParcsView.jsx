@@ -203,7 +203,7 @@ const ParcsView = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                        Ferme {fermeId} - Bâtiment {batimentId}
+                        {fermeInfo?.name || `Ferme ${fermeId}`} - {batimentInfo?.name || `Bâtiment ${batimentId}`}
                     </h1>
                     <p className="text-sm text-gray-500">Vue d'ensemble des parcs de ce bâtiment</p>
                 </div>
@@ -542,7 +542,7 @@ const ParcsView = () => {
             {showSummary && (
                 <Card className="animate-fadeIn">
                     <div className="p-4 border-b border-gray-100">
-                        <h2 className="text-lg font-semibold text-gray-900">Tableau de bord - Parcs du Bâtiment {batimentId}</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Tableau de bord - Parcs du {batimentInfo?.name || `Bâtiment ${batimentId}`}</h2>
                         <p className="text-sm text-gray-500">Données consolidées pour tous les parcs</p>
                     </div>
                     {/* Charts Section */}

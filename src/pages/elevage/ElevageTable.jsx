@@ -9,7 +9,7 @@ import { Card } from '../../components/ui/Card';
 import ElevageForm from '../../components/forms/ElevageForm';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import ElevageCharts from '../../components/charts/ElevageCharts';
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, FileSpreadsheet, MessageSquare, BarChart3, X } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, FileSpreadsheet, MessageSquare, BarChart3, X, Printer, History } from 'lucide-react';
 
 const ElevageTable = () => {
     const { fermeId, batimentId, parcId } = useParams();
@@ -32,7 +32,7 @@ const ElevageTable = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
-    const [isChartsOpen, setIsChartsOpen] = useState(true);
+    const [isChartsOpen, setIsChartsOpen] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -162,6 +162,198 @@ const ElevageTable = () => {
         }
     };
 
+    const handlePrintPDF = () => {
+        // Create a print-friendly version of the table
+        const printWindow = window.open('', '_blank');
+        const parcName = parcInfo?.name || `Parc ${parcId}`;
+        const batimentName = parcInfo?.batimentName || `Bâtiment ${batimentId}`;
+        const fermeName = parcInfo?.fermeName || `Ferme ${fermeId}`;
+
+        const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <head>
+                <title>${fermeName}</title>
+                <style>
+                    @media print {
+                        @page { margin: 1cm; size: landscape; }
+                        body { margin: 0; }
+                    }
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        padding: 20px;
+                        color: #1f2937;
+                    }
+                    .header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        border-bottom: 3px solid #3b82f6;
+                        padding-bottom: 15px;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        color: #1f2937;
+                        font-weight: 800;
+                    }
+                    .header p {
+                        margin: 5px 0 0 0;
+                        font-size: 14px;
+                        color: #6b7280;
+                    }
+                    .info-bar {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 20px;
+                        padding: 10px;
+                        background: #f3f4f6;
+                        border-radius: 8px;
+                    }
+                    .info-item {
+                        font-size: 12px;
+                    }
+                    .info-item strong {
+                        color: #3b82f6;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 9px;
+                        margin-bottom: 20px;
+                    }
+                    th, td {
+                        border: 1px solid #d1d5db;
+                        padding: 6px 4px;
+                        text-align: center;
+                    }
+                    th {
+                        background-color: #f3f4f6;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        color: #374151;
+                        font-size: 8px;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9fafb;
+                    }
+                    .footer {
+                        margin-top: 30px;
+                        text-align: center;
+                        font-size: 10px;
+                        color: #9ca3af;
+                        border-top: 1px solid #e5e7eb;
+                        padding-top: 10px;
+                    }
+                    .bg-blue-50 { background-color: #eff6ff !important; }
+                    .bg-red-50 { background-color: #fef2f2 !important; }
+                    .bg-yellow-50 { background-color: #fefce8 !important; }
+                    .bg-orange-50 { background-color: #fff7ed !important; }
+                    .bg-purple-50 { background-color: #faf5ff !important; }
+                    .bg-green-50 { background-color: #f0fdf4 !important; }
+                    .bg-emerald-50 { background-color: #ecfdf5 !important; }
+                    .bg-gray-50 { background-color: #f9fafb !important; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>${fermeName}</h1>
+                </div>
+                
+                <div class="info-bar">
+                    <div class="info-item"><strong>Date d'impression:</strong> ${new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="info-item"><strong>Parc:</strong> ${parcName}</div>
+                    <div class="info-item"><strong>Lot:</strong> ${parcInfo?.lot || 'Non défini'}</div>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th rowspan="2">DATE</th>
+                            <th rowspan="2">AGE</th>
+                            <th colspan="2" class="bg-blue-50">EFFECTIF</th>
+                            <th colspan="3" class="bg-red-50">MORTALITE</th>
+                            <th rowspan="2" class="bg-gray-50">GUIDE</th>
+                            <th colspan="3" class="bg-yellow-50">TRIAGE</th>
+                            <th colspan="2" class="bg-orange-50">CORRECTION</th>
+                            <th rowspan="2" class="bg-blue-50">TRANSFERT</th>
+                            <th rowspan="2" class="bg-gray-50">OBS</th>
+                            <th colspan="2" class="bg-purple-50">CUMUL MORT. (%)</th>
+                            <th colspan="3" class="bg-blue-50">POIDS (g)</th>
+                            <th rowspan="2" class="bg-emerald-50">HOMOG %</th>
+                            <th colspan="2" class="bg-green-50">ALIMENT (kg)</th>
+                        </tr>
+                        <tr>
+                            <th class="bg-blue-50">COQ</th>
+                            <th class="bg-blue-50">POULE</th>
+                            <th class="bg-red-50">COQ N ${!(fermeId === '1' && batimentId === '2' && parcId === '2') ? '%' : ''}</th>
+                            <th class="bg-red-50">POULE N ${!(fermeId === '1' && batimentId === '2' && parcId === '2') ? '%' : ''}</th>
+                            <th class="bg-red-50">SEMAINE %</th>
+                            <th class="bg-yellow-50">DECHET</th>
+                            <th class="bg-yellow-50">COQ FRERE</th>
+                            <th class="bg-yellow-50">POULE SOEUR</th>
+                            <th class="bg-orange-50">+</th>
+                            <th class="bg-orange-50">-</th>
+                            <th class="bg-purple-50">C %</th>
+                            <th class="bg-purple-50">P %</th>
+                            <th class="bg-blue-50">COQ</th>
+                            <th class="bg-blue-50">POULE</th>
+                            <th class="bg-blue-50">GUIDE</th>
+                            <th class="bg-green-50">COQ</th>
+                            <th class="bg-green-50">POULE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paginatedData.map(item => `
+                            <tr>
+                                <td><strong>${item.date}</strong></td>
+                                <td>${item.age || '-'}</td>
+                                <td>${item.effectif_coq ?? '-'}</td>
+                                <td>${item.effectif_poule ?? '-'}</td>
+                                <td>${item.mort_coq_n ?? '-'}${!(fermeId === '1' && batimentId === '2' && parcId === '2') && item.mort_coq_pct != null ? ' (' + item.mort_coq_pct + '%)' : ''}</td>
+                                <td>${item.mort_poule_n ?? '-'}${!(fermeId === '1' && batimentId === '2' && parcId === '2') && item.mort_poule_pct != null ? ' (' + item.mort_poule_pct + '%)' : ''}</td>
+                                <td>${item.mort_semaine_coq ?? '-'} / ${item.mort_semaine_poule ?? '-'}</td>
+                                <td>${item.guide ?? '-'}</td>
+                                <td>${item.triage_dechet || '-'}</td>
+                                <td>${item.triage_coq_frere || '-'}</td>
+                                <td>${item.triage_poule_soeur || '-'}</td>
+                                <td style="color: #059669;">${item.correction_plus || '-'}</td>
+                                <td style="color: #dc2626;">${item.correction_moins || '-'}</td>
+                                <td style="color: #2563eb; font-weight: bold;">${item.transfert || '-'}</td>
+                                <td>${item.observation ? '✓' : '-'}</td>
+                                <td>${item.cumul_mort_c != null ? item.cumul_mort_c + '%' : '-'}</td>
+                                <td>${item.cumul_mort_p != null ? item.cumul_mort_p + '%' : '-'}</td>
+                                <td>${item.poids_coq ?? '-'}</td>
+                                <td>${item.poids_poule ?? '-'}</td>
+                                <td>${item.poids_guide ?? '-'}</td>
+                                <td class="bg-emerald-50">${item.homog_pct != null ? item.homog_pct + '%' : '-'}</td>
+                                <td>${item.aliment_coq ?? '-'}</td>
+                                <td>${item.aliment_poule ?? '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <div class="footer">
+                    <p>Document généré par Couvoir Jaber - Système de Gestion d'Élevage</p>
+                    <p>© ${new Date().getFullYear()} Couvoir Jaber. Tous droits réservés.</p>
+                </div>
+                
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        // Optional: close window after printing
+                        // window.onafterprint = function() { window.close(); }
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+    };
+
     const handleRestore = async (item) => {
         if (!confirm(`Restaurer l'enregistrement du ${item.date} ?`)) return;
         await elevageService.restoreElevage(item.id);
@@ -236,7 +428,7 @@ const ElevageTable = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                        Ferme {fermeId} - Bâtiment {batimentId} - Parc {parcId}
+                        {parcInfo?.fermeName || `Ferme ${fermeId}`} - {parcInfo?.batimentName || `Bâtiment ${batimentId}`} - {parcInfo?.name || `Parc ${parcId}`}
                     </h1>
                     <p className="text-sm text-gray-500">Gérez les rations et consommations</p>
                 </div>
@@ -313,6 +505,10 @@ const ElevageTable = () => {
                                 <FileSpreadsheet size={16} className="mr-2" />
                                 Importer Excel
                             </Button>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintPDF}>
+                                <Printer size={16} className="mr-2" />
+                                Imprimer PDF
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -343,6 +539,7 @@ const ElevageTable = () => {
                                         <th colSpan="3" className="px-4 py-3 border border-gray-300 font-medium text-center bg-blue-50">POIDS (g)</th>
                                         <th rowSpan="2" className="px-4 py-3 border border-gray-300 font-medium text-center bg-emerald-50">HOMOG %</th>
                                         <th colSpan="2" className="px-4 py-3 border border-gray-300 font-medium text-center bg-green-50">ALIMENT en kg</th>
+                                        <th colSpan="2" className="px-4 py-3 border border-gray-300 font-medium text-center bg-teal-50">RATION (g)</th>
                                         <th rowSpan="2" className="px-4 py-3 border border-gray-300 font-medium text-center">Actions</th>
                                     </tr>
                                     <tr>
@@ -402,6 +599,8 @@ const ElevageTable = () => {
                                         {/* ALIMENT sub-headers */}
                                         <th className="px-3 py-2 border border-gray-300 font-medium text-center bg-green-50">COQ</th>
                                         <th className="px-3 py-2 border border-gray-300 font-medium text-center bg-green-50">POULE</th>
+                                        <th className="px-3 py-2 border border-gray-300 font-medium text-center bg-teal-50">COQ</th>
+                                        <th className="px-3 py-2 border border-gray-300 font-medium text-center bg-teal-50">POULE</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -482,6 +681,14 @@ const ElevageTable = () => {
                                                 {/* ALIMENT */}
                                                 <td className="px-3 py-3 border border-gray-200 text-center font-mono">{item.aliment_coq ?? '-'}</td>
                                                 <td className="px-3 py-3 border border-gray-200 text-center font-mono">{item.aliment_poule ?? '-'}</td>
+
+                                                {/* RATION */}
+                                                <td className="px-3 py-3 border border-gray-200 text-center font-mono bg-teal-50/30">
+                                                    {(item.aliment_coq && item.effectif_coq) ? ((item.aliment_coq * 1000) / item.effectif_coq).toFixed(0) : '-'}
+                                                </td>
+                                                <td className="px-3 py-3 border border-gray-200 text-center font-mono bg-teal-50/30">
+                                                    {(item.aliment_poule && item.effectif_poule) ? ((item.aliment_poule * 1000) / item.effectif_poule).toFixed(0) : '-'}
+                                                </td>
 
                                                 {/* Actions */}
                                                 <td className="px-4 py-3 border border-gray-200 text-center space-x-2">
@@ -570,7 +777,7 @@ const ElevageTable = () => {
             <Modal
                 isOpen={isChartsOpen}
                 onClose={() => setIsChartsOpen(false)}
-                title={`Tableau de Bord - Parc ${parcId}`}
+                title={`Tableau de Bord - ${parcInfo?.name || `Parc ${parcId}`}`}
                 size="xxl"
             >
                 <div className="bg-gray-50/50 -m-6 p-6 min-h-[600px]">

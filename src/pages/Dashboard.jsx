@@ -1,23 +1,22 @@
 import { useEffect, useState, useMemo } from 'react';
 import { elevageService } from '../services/elevageService';
 import { Card } from '../components/ui/Card';
-import { TrendingUp, Grid3x3, LayoutDashboard, Search, Users, Scale, AlertTriangle, Activity } from 'lucide-react';
+import { TrendingUp, LayoutDashboard, Search, Activity } from 'lucide-react';
 import ElevageCharts from '../components/charts/ElevageCharts';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [allData, setAllData] = useState([]);
     const [fermes, setFermes] = useState([]);
-    const [kpis, setKpis] = useState(null);
+
     const [search, setSearch] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [elevages, fermesList, globalKpis] = await Promise.all([
+                const [elevages, fermesList] = await Promise.all([
                     elevageService.getElevages(),
-                    elevageService.getFermes(),
-                    elevageService.getGlobalKPIs().catch(() => null) // Fallback if endpoint not available
+                    elevageService.getFermes()
                 ]);
 
                 // Normalize data for charts
@@ -33,12 +32,9 @@ const Dashboard = () => {
 
                 setAllData(normalizedData);
                 setFermes(fermesList);
-                setKpis(globalKpis);
-
                 console.log('Dashboard data loaded:', {
                     records: normalizedData.length,
-                    fermes: fermesList.length,
-                    kpis: globalKpis
+                    fermes: fermesList.length
                 });
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
@@ -50,44 +46,7 @@ const Dashboard = () => {
         fetchData();
     }, []);
 
-    // Calculate KPIs from data if API not available
-    const calculatedKpis = useMemo(() => {
-        if (kpis) return kpis;
 
-        if (allData.length === 0) return null;
-
-        const latestRecords = allData.slice(0, 50); // Last 50 records
-
-        const totalEffectif = latestRecords.reduce((sum, r) =>
-            sum + (r.effectif_coq || 0) + (r.effectif_poule || 0), 0);
-
-        const avgPoidsCoq = latestRecords
-            .filter(r => r.poids_coq)
-            .reduce((sum, r, _, arr) => sum + r.poids_coq / arr.length, 0);
-
-        const avgPoidsPoule = latestRecords
-            .filter(r => r.poids_poule)
-            .reduce((sum, r, _, arr) => sum + r.poids_poule / arr.length, 0);
-
-        const avgHomog = latestRecords
-            .filter(r => r.homog_pct)
-            .reduce((sum, r, _, arr) => sum + r.homog_pct / arr.length, 0);
-
-        const totalMort = latestRecords.reduce((sum, r) =>
-            sum + (r.mort_coq_n || 0) + (r.mort_poule_n || 0), 0);
-
-        const mortalityRate = totalEffectif > 0 ? (totalMort / totalEffectif * 100) : 0;
-
-        return {
-            total_fermes: fermes.length,
-            total_parcs: new Set(allData.map(r => r.parcId)).size,
-            total_effectif: totalEffectif,
-            avg_poids_coq: Math.round(avgPoidsCoq * 10) / 10,
-            avg_poids_poule: Math.round(avgPoidsPoule * 10) / 10,
-            avg_homog_pct: Math.round(avgHomog * 10) / 10,
-            mortality_rate: Math.round(mortalityRate * 100) / 100
-        };
-    }, [allData, fermes, kpis]);
 
     // Summary data logic
     const summaryData = useMemo(() => {
@@ -125,20 +84,7 @@ const Dashboard = () => {
         </div>
     );
 
-    const KpiCard = ({ icon: Icon, title, value, subtitle, color = "blue" }) => (
-        <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-500 font-medium mb-1">{title}</p>
-                    <p className={`text-3xl font-bold text-${color}-600`}>{value || '-'}</p>
-                    {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
-                </div>
-                <div className={`p-3 bg-${color}-50 rounded-xl`}>
-                    <Icon size={28} className={`text-${color}-600`} />
-                </div>
-            </div>
-        </Card>
-    );
+
 
     return (
         <div className="space-y-8 animate-fadeIn w-full">
@@ -153,54 +99,17 @@ const Dashboard = () => {
                     </h1>
                     <p className="text-gray-500 mt-2 font-medium">Vue d'ensemble et courbes de performance de toutes les fermes</p>
                 </div>
-                <div className="flex items-center gap-3 bg-primary-50 px-5 py-3 rounded-2xl text-primary-700 font-bold border border-primary-100 shadow-sm">
-                    <TrendingUp size={22} />
-                    <span>{allData.length} enregistrements</span>
-                </div>
+
             </div>
 
-            {/* KPI Cards */}
-            {calculatedKpis && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <KpiCard
-                        icon={Grid3x3}
-                        title="Total Parcs"
-                        value={calculatedKpis.total_parcs}
-                        subtitle={`${calculatedKpis.total_fermes} fermes`}
-                        color="blue"
-                    />
-                    <KpiCard
-                        icon={Users}
-                        title="Effectif Total"
-                        value={calculatedKpis.total_effectif?.toLocaleString()}
-                        subtitle="Coqs + Poules"
-                        color="green"
-                    />
-                    <KpiCard
-                        icon={Scale}
-                        title="Poids Moyen"
-                        value={`${calculatedKpis.avg_poids_poule}g`}
-                        subtitle={`Homog: ${calculatedKpis.avg_homog_pct}%`}
-                        color="purple"
-                    />
-                    <KpiCard
-                        icon={AlertTriangle}
-                        title="Taux Mortalité"
-                        value={`${calculatedKpis.mortality_rate}%`}
-                        subtitle="Moyenne globale"
-                        color="red"
-                    />
-                </div>
-            )}
+
 
             {/* Performance Curves Section */}
             <section className="space-y-6">
                 <div className="flex items-center gap-3">
                     <div className="w-2 h-8 bg-primary-600 rounded-full"></div>
                     <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Courbes de Performance</h2>
-                    <div className="ml-auto px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-600">
-                        {allData.length} points de données
-                    </div>
+
                 </div>
                 <ElevageCharts data={allData} />
             </section>

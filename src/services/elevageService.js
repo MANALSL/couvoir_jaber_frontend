@@ -41,6 +41,10 @@ export const elevageService = {
         const response = await api.get('/fermes/');
         return response.data;
     },
+    getFermeSummary: async (fermeId) => {
+        const response = await api.get(`/fermes/${fermeId}/summary`);
+        return response.data;
+    },
     addFerme: async (ferme) => {
         const response = await api.post('/fermes/', ferme);
         return response.data;
@@ -62,6 +66,10 @@ export const elevageService = {
     },
     getBatiment: async (id) => {
         const response = await api.get(`/batiments/${id}`);
+        return response.data;
+    },
+    getBatimentSummary: async (id) => {
+        const response = await api.get(`/batiments/${id}/summary`);
         return response.data;
     },
     addBatiment: async (batiment) => {

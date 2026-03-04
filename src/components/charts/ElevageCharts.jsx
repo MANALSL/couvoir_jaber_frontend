@@ -10,7 +10,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { Scale, Utensils, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Scale, Utensils, AlertTriangle, TrendingUp, Users } from 'lucide-react';
 import { useMemo } from 'react';
 
 ChartJS.register(
@@ -75,6 +75,8 @@ const ElevageCharts = ({ data }) => {
                 poids_guide: recGuide.length > 0 ? parseFloat((recGuide.reduce((a, b) => a + b, 0) / recGuide.length).toFixed(0)) : null,
                 aliment_coq: parseFloat(totalAlimentCoq.toFixed(1)),
                 aliment_poule: parseFloat(totalAlimentPoule.toFixed(1)),
+                effectif_coq: totalEffCoq,
+                effectif_poule: totalEffPoule,
                 mort_poule_pct: totalEffPoule > 0 ? parseFloat(((totalMortPoule / totalEffPoule) * 100).toFixed(2)) : 0,
                 mort_coq_pct: totalEffCoq > 0 ? parseFloat(((totalMortCoq / totalEffCoq) * 100).toFixed(2)) : 0
             };
@@ -215,6 +217,29 @@ const ElevageCharts = ({ data }) => {
         ]
     };
 
+    // EFFECTIF Data
+    const effectifData = {
+        labels,
+        datasets: [
+            {
+                label: 'Effectif Coq',
+                data: aggregatedData.map(d => d.effectif_coq),
+                borderColor: '#2563eb', // Blue
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.4,
+            },
+            {
+                label: 'Effectif Poule',
+                data: aggregatedData.map(d => d.effectif_poule),
+                borderColor: '#db2777', // Pink
+                backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                fill: true,
+                tension: 0.4,
+            }
+        ]
+    };
+
     const ChartCard = ({ title, icon: Icon, colorClass, children }) => (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all hover:shadow-md">
             <div className="flex items-center gap-3 mb-6">
@@ -253,9 +278,15 @@ const ElevageCharts = ({ data }) => {
                 </ChartCard>
             </div>
 
-            <ChartCard title="Evolution de la Mortalité" icon={AlertTriangle} colorClass="bg-red-500">
-                <Line data={mortData} options={chartOptions} />
-            </ChartCard>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <ChartCard title="Evolution de la Mortalité" icon={AlertTriangle} colorClass="bg-red-500">
+                    <Line data={mortData} options={chartOptions} />
+                </ChartCard>
+
+                <ChartCard title="Evolution de l'Effectif (Total Données)" icon={Users} colorClass="bg-emerald-500">
+                    <Line data={effectifData} options={chartOptions} />
+                </ChartCard>
+            </div>
         </div>
     );
 };

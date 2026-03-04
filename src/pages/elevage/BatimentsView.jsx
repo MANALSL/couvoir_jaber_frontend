@@ -18,6 +18,8 @@ const BatimentsView = () => {
     const [showSummary, setShowSummary] = useState(false);
     const [editingBatiment, setEditingBatiment] = useState(null);
     const [viewingBilan, setViewingBilan] = useState(null);
+    const [viewingSummary, setViewingSummary] = useState(null);
+    const [summaryDataForModal, setSummaryDataForModal] = useState([]);
     const [isChartsOpen, setIsChartsOpen] = useState(false);
     const [allFermeData, setAllFermeData] = useState([]);
     const [editForm, setEditForm] = useState({ name: '', lot: '' });
@@ -34,70 +36,28 @@ const BatimentsView = () => {
     const [batiments, setBatiments] = useState([]);
 
     // Link real data to the summary overview
-    const summaryData = useMemo(() => {
-        if (!allFermeData || allFermeData.length === 0) {
-            // Fallback to empty structure based on batiments if no data yet
-            return batiments.flatMap(bat =>
-                Array.from({ length: bat.parc_count || 0 }, (_, i) => ({
-                    batiment: bat.id,
-                    parc: i + 1,
-                    age: '-',
-                    effectif: '-',
-                    poids_actuel: '-',
-                    poids_gain: '-',
-                    guide: '-',
-                    homog_pct: '-',
-                    ration_guide: '-',
-                    ration_actuel: '-',
-                    ration_diff: '-',
-                    ration_proch: '-',
-                    mort_pct: '-',
-                    mort_guide: '-',
-                    obsevt: ''
-                }))
-            );
+    const [summaryData, setSummaryData] = useState([]);
+    const [loadingSummary, setLoadingSummary] = useState(false);
+
+    // Fetch global summary data
+    useEffect(() => {
+        const fetchGlobalSummary = async () => {
+            setLoadingSummary(true);
+            try {
+                const data = await elevageService.getFermeSummary(fermeId);
+                setSummaryData(data);
+            } catch (error) {
+                console.error("Error fetching global summary:", error);
+                setSummaryData([]);
+            } finally {
+                setLoadingSummary(false);
+            }
+        };
+
+        if (fermeId) {
+            fetchGlobalSummary();
         }
-
-        return batiments.flatMap(bat =>
-            Array.from({ length: bat.parc_count || 0 }, (_, i) => {
-                const pIdx = i + 1;
-                // Get all records for this specific building and park, sorted by date DESC
-                const parkRecords = allFermeData
-                    .filter(d => String(d.batimentId) === String(bat.id) && String(d.parcId) === String(pIdx))
-                    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                const latest = parkRecords[0] || {};
-                const prev = parkRecords[1] || {};
-
-                // Calculations
-                const curPoids = parseFloat(latest.poids_poule) || 0;
-                const prevPoids = parseFloat(prev.poids_poule) || 0;
-                const gain = (curPoids > 0 && prevPoids > 0) ? (curPoids - prevPoids).toFixed(0) : '-';
-
-                const totalEffectif = (parseFloat(latest.effectif_poule) || 0) + (parseFloat(latest.effectif_coq) || 0);
-
-                return {
-                    batiment: bat.id,
-                    parc: pIdx,
-                    age: latest.age || '-',
-                    effectif: totalEffectif || '-',
-                    poids_actuel: latest.poids_poule || '-',
-                    poids_gain: gain,
-                    guide: latest.poids_guide || '-',
-                    homog_pct: latest.homog_pct || '-',
-                    ration_guide: '-', // Placeholder or derived
-                    ration_actuel: latest.aliment_poule || '-',
-                    ration_diff: (latest.aliment_poule && prev.aliment_poule)
-                        ? (parseFloat(latest.aliment_poule) - parseFloat(prev.aliment_poule)).toFixed(1)
-                        : '-',
-                    ration_proch: '-',
-                    mort_pct: latest.mort_poule_pct || '-',
-                    mort_guide: '-',
-                    obsevt: latest.observation || ''
-                };
-            })
-        );
-    }, [batiments, allFermeData]);
+    }, [fermeId, allFermeData]); // Re-fetch if allFermeData changes (e.g. after update) or fermeId changes
 
     // Process data for the detailed Bilan modal (grouped by date)
     const bilanData = useMemo(() => {
@@ -172,6 +132,7 @@ const BatimentsView = () => {
             const normalized = data.map(d => ({
                 ...d,
                 fermeId: d.fermeId || d.ferme_id,
+                batimentId: d.batimentId || d.batiment_id,
                 parcId: d.parcId || d.parc_id,
                 deleted: d.deleted ?? d.is_deleted
             }));
@@ -195,6 +156,18 @@ const BatimentsView = () => {
     const handleViewBilan = (e, batiment) => {
         e.stopPropagation();
         setViewingBilan(batiment);
+    };
+
+    const handleViewSummary = async (e, batiment) => {
+        e.stopPropagation();
+        setViewingSummary(batiment);
+        try {
+            const data = await elevageService.getBatimentSummary(batiment.id);
+            setSummaryDataForModal(data);
+        } catch (error) {
+            console.error("Error fetching batiment summary:", error);
+            setSummaryDataForModal([]);
+        }
     };
 
     const handleEditClick = (e, batiment) => {
@@ -405,9 +378,16 @@ const BatimentsView = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
+                                            onClick={(e) => handleViewSummary(e, batiment)}
+                                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                            title="Résumé (État Actuel)"
+                                        >
+                                            <Grid3x3 size={18} />
+                                        </button>
+                                        <button
                                             onClick={(e) => handleViewBilan(e, batiment)}
                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                            title="Bilan"
+                                            title="Bilan (Historique)"
                                         >
                                             <FileText size={18} />
                                         </button>
@@ -609,57 +589,147 @@ const BatimentsView = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {summaryData.map((row, idx) => {
-                                    const isBatimentFirst = idx === 0 || row.batiment !== summaryData[idx - 1].batiment;
-                                    let rowSpan = 1;
-                                    if (isBatimentFirst) {
-                                        let i = idx + 1;
-                                        while (i < summaryData.length && summaryData[i].batiment === row.batiment) {
-                                            rowSpan++;
-                                            i++;
+                                {loadingSummary ? (
+                                    <tr>
+                                        <td colSpan="14" className="p-8 text-center text-gray-500 italic">
+                                            Chargement des données...
+                                        </td>
+                                    </tr>
+                                ) : summaryData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="14" className="p-8 text-center text-gray-500 italic">
+                                            Chargement des données ou aucun parc actif...
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    summaryData.map((row, idx) => {
+                                        const isBatimentFirst = idx === 0 || row.batiment !== summaryData[idx - 1].batiment;
+                                        let rowSpan = 1;
+                                        if (isBatimentFirst) {
+                                            let i = idx + 1;
+                                            while (i < summaryData.length && summaryData[i].batiment === row.batiment) {
+                                                rowSpan++;
+                                                i++;
+                                            }
                                         }
-                                    }
 
-                                    return (
-                                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                            {isBatimentFirst && (
-                                                <td
-                                                    rowSpan={rowSpan}
-                                                    className="px-3 py-2 border border-gray-300 text-center font-bold text-xl bg-white align-middle text-gray-800 shadow-sm"
-                                                >
-                                                    {row.batiment}
+                                        return (
+                                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                                {isBatimentFirst && (
+                                                    <td
+                                                        rowSpan={rowSpan}
+                                                        className="px-3 py-2 border border-gray-300 text-center font-bold text-xl bg-white align-middle text-gray-800 shadow-sm"
+                                                    >
+                                                        {row.batiment}
+                                                    </td>
+                                                )}
+                                                <td className="px-3 py-2 border border-gray-200 text-center font-semibold bg-blue-50">{row.parc}</td>
+                                                <td className="px-3 py-2 border border-gray-200 text-center font-medium bg-blue-50">{row.age}</td>
+                                                <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.effectif}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.poids_actuel}</td>
+                                                <td className={`px-2 py-2 border border-gray-200 text-center font-mono text-xs ${row.poids_gain !== '-' && parseFloat(row.poids_gain) > 0 ? 'text-green-600' : ''}`}>
+                                                    {row.poids_gain !== '-' ? (parseFloat(row.poids_gain) > 0 ? `+${row.poids_gain}` : row.poids_gain) : '-'}
                                                 </td>
-                                            )}
-                                            <td className="px-3 py-2 border border-gray-200 text-center font-semibold bg-blue-50">{row.parc}</td>
-                                            <td className="px-3 py-2 border border-gray-200 text-center font-medium bg-blue-50">{row.age}</td>
-                                            <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.effectif}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.poids_actuel}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-green-600">+{row.poids_gain}</td>
 
-                                            {/* ECRT/GUID : Diff between Actuel and Guide */}
-                                            <td className={`px-2 py-2 border border-gray-200 text-center font-mono text-xs ${isNaN(row.poids_actuel - row.guide) ? '' : (row.poids_actuel - row.guide) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isNaN(row.poids_actuel - row.guide) ? '' : (row.poids_actuel - row.guide) > 0 ? `+${row.poids_actuel - row.guide}` : (row.poids_actuel - row.guide)}
-                                            </td>
+                                                {/* ECRT/GUID : Diff between Actuel and Guide */}
+                                                <td className={`px-2 py-2 border border-gray-200 text-center font-mono text-xs ${row.poids_actuel !== '-' && row.guide !== '-'
+                                                    ? ((parseFloat(row.poids_actuel) - parseFloat(row.guide)) >= 0 ? 'text-green-600' : 'text-red-600')
+                                                    : ''
+                                                    }`}>
+                                                    {row.poids_actuel !== '-' && row.guide !== '-'
+                                                        ? (() => {
+                                                            const diff = parseFloat(row.poids_actuel) - parseFloat(row.guide);
+                                                            return diff > 0 ? `+${diff.toFixed(0)}` : diff.toFixed(0);
+                                                        })()
+                                                        : '-'}
+                                                </td>
 
-                                            {/* Guide */}
-                                            <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.guide}</td>
+                                                {/* Guide */}
+                                                <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.guide}</td>
 
-                                            <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.homog_pct}%</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-gray-500 italic">{row.ration_guide}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_actuel}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_diff > 0 ? `+${row.ration_diff}` : row.ration_diff}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_proch}</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-red-600 font-bold">{row.mort_pct}%</td>
-                                            <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-gray-500">{row.mort_guide}%</td>
-                                            <td className="px-3 py-2 border border-gray-200 text-center text-xs">{row.obsevt}</td>
-                                        </tr>
-                                    );
-                                })}
+                                                <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.homog_pct !== '-' ? `${row.homog_pct}%` : '-'}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-gray-500 italic">{row.ration_guide}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_actuel}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">
+                                                    {row.ration_diff !== '-' ? (parseFloat(row.ration_diff) > 0 ? `+${row.ration_diff}` : row.ration_diff) : '-'}
+                                                </td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_proch}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-red-600 font-bold">{row.mort_pct !== '-' ? `${row.mort_pct}%` : '-'}</td>
+                                                <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-gray-500">{row.mort_guide}</td>
+                                                <td className="px-3 py-2 border border-gray-200 text-center text-xs">{row.obsevt}</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
                 </Card>
             )}
+
+            {/* Batiment Summary Modal (Resume) */}
+            <Modal
+                isOpen={!!viewingSummary}
+                onClose={() => setViewingSummary(null)}
+                title={`Résumé - ${viewingSummary?.name || ''}`}
+                size="xl"
+            >
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-sm border-collapse">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center bg-blue-50">PARC</th>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center bg-blue-50">AGE</th>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center">EFFECTIF</th>
+                                <th colSpan="3" className="px-3 py-3 border border-gray-300 font-medium text-center bg-yellow-50">POIDS(g)</th>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center">Guide</th>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center">HOMOG %</th>
+                                <th colSpan="3" className="px-3 py-3 border border-gray-300 font-medium text-center bg-green-50">RATION(g)</th>
+                                <th colSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center bg-red-50">MORT %</th>
+                                <th rowSpan="2" className="px-3 py-3 border border-gray-300 font-medium text-center">OBSEVT</th>
+                            </tr>
+                            <tr>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-yellow-50 text-[10px]">ACTUEL</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-yellow-50 text-[10px]">GAIN</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-yellow-50 text-[10px]">ECRT/GUID</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-green-50 text-[10px]">ACTUEL</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-green-50 text-[10px]">DIFF</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-green-50 text-[10px]">PROCH</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-red-50 text-[10px]">ACTUEL</th>
+                                <th className="px-2 py-2 border border-gray-300 font-medium text-center bg-red-50 text-[10px]">GUIDE</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {summaryDataForModal.length === 0 ? (
+                                <tr>
+                                    <td colSpan="14" className="p-4 text-center text-gray-500 italic">Chargement... ou aucune donnée</td>
+                                </tr>
+                            ) : (
+                                summaryDataForModal.map((row, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-3 py-2 border border-gray-200 text-center font-semibold bg-blue-50">{row.parc}</td>
+                                        <td className="px-3 py-2 border border-gray-200 text-center font-medium bg-blue-50">{row.age}</td>
+                                        <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.effectif}</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.poids_actuel}</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-green-600">+{row.poids_gain}</td>
+                                        <td className={`px-2 py-2 border border-gray-200 text-center font-mono text-xs ${isNaN(row.poids_actuel - row.guide) ? '' : (row.poids_actuel - row.guide) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {isNaN(row.poids_actuel - row.guide) ? '' : (row.poids_actuel - row.guide) > 0 ? `+${(row.poids_actuel - row.guide).toFixed(0)}` : (row.poids_actuel - row.guide).toFixed(0)}
+                                        </td>
+                                        <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.guide}</td>
+                                        <td className="px-3 py-2 border border-gray-200 text-center font-mono">{row.homog_pct}%</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_actuel}</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{parseFloat(row.ration_diff) > 0 ? `+${row.ration_diff}` : row.ration_diff}</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs">{row.ration_proch}</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-red-600 font-bold">{row.mort_pct}%</td>
+                                        <td className="px-2 py-2 border border-gray-200 text-center font-mono text-xs text-gray-500">{row.mort_guide}%</td>
+                                        <td className="px-3 py-2 border border-gray-200 text-center text-xs">{row.obsevt}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Modal>
 
             {/* Bilan Modal */}
             <Modal

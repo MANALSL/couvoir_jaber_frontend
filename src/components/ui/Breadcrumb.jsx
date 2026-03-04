@@ -1,31 +1,50 @@
 import { ChevronRight, Home } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-const Breadcrumb = ({ items }) => {
+// Detect section root from current URL to pick correct home link
+const useSectionRoot = (items) => {
+    const { pathname } = useLocation();
+    if (pathname.startsWith('/production')) return { label: 'Production', path: '/production' };
+    if (pathname.startsWith('/vaccination')) return { label: 'Vaccination', path: '/vaccination' };
+    return { label: 'Élevage', path: '/elevage' };
+};
+
+const Breadcrumb = ({ items = [] }) => {
+    const root = useSectionRoot(items);
+
     return (
-        <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
+        <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-sm mb-5">
             <Link
-                to="/elevage"
-                className="flex items-center hover:text-blue-600 transition-colors"
+                to="/"
+                className="flex items-center gap-1 text-slate-400 hover:text-primary-600 transition-colors"
+                title="Accueil"
             >
-                <Home size={16} className="mr-1" />
-                Élevage
+                <Home size={14} />
             </Link>
 
-            {items.map((item, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                    <ChevronRight size={16} className="text-gray-400" />
+            <ChevronRight size={13} className="text-slate-300 flex-shrink-0" />
+
+            <Link
+                to={root.path}
+                className="text-slate-500 hover:text-primary-600 font-medium transition-colors"
+            >
+                {root.label}
+            </Link>
+
+            {items.map((item, idx) => (
+                <span key={idx} className="flex items-center gap-1.5">
+                    <ChevronRight size={13} className="text-slate-300 flex-shrink-0" />
                     {item.link ? (
                         <Link
                             to={item.link}
-                            className="hover:text-blue-600 transition-colors font-medium"
+                            className="text-slate-500 hover:text-primary-600 font-medium transition-colors"
                         >
                             {item.label}
                         </Link>
                     ) : (
-                        <span className="text-gray-900 font-medium">{item.label}</span>
+                        <span className="text-slate-800 font-semibold">{item.label}</span>
                     )}
-                </div>
+                </span>
             ))}
         </nav>
     );

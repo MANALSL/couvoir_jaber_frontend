@@ -29,50 +29,42 @@ const FermesView = () => {
 
     // Link real data to the building summary overview
     const summaryData = useMemo(() => {
-        if (!allData || allData.length === 0) {
-            return fermes.flatMap(ferme =>
-                Array.from({ length: ferme.batiment_count || 0 }, (_, i) => ({
-                    ferme: ferme.id,
-                    batiment: i + 1,
-                    age: '-',
-                    effectif: '-',
-                    poids_actuel: '-',
-                    poids_gain: '-',
-                    guide: '-',
-                    homog_pct: '-',
-                    ration_guide: '-',
-                    ration_actuel: '-',
-                    ration_diff: '-',
-                    ration_proch: '-',
-                    mort_pct: '-',
-                    obsevt: ''
-                }))
-            );
+        if (!allData || allData.length === 0 || !fermes || fermes.length === 0) {
+            return [];
         }
 
-        return fermes.flatMap(ferme =>
-            Array.from({ length: ferme.batiment_count || 0 }, (_, i) => {
-                const bIdx = i + 1;
+        return fermes.flatMap(ferme => {
+            const batimentsList = ferme.batiments || [];
 
-                // For each building, we aggregate data from its parcs (assuming 5 parcs per building)
-                // We find the latest record for each parc of this building
-                const buildingParcsData = [];
-                for (let pIdx = 1; pIdx <= 5; pIdx++) {
+            if (batimentsList.length === 0) {
+                // Fallback if no batiments (or not loaded), though we can't do much without IDs
+                return [];
+            }
+
+            return batimentsList.map(bat => {
+                // Get parcs for this building
+                const parcsList = bat.parcs || [];
+
+                // Collect latest data for each parc
+                const buildingParcsData = parcsList.map(p => {
                     const parcRecords = allData
-                        .filter(d => String(d.fermeId) === String(ferme.id) && String(d.batimentId) === String(bIdx) && String(d.parcId) === String(pIdx))
+                        .filter(d => String(d.parcId || d.parc_id) === String(p.id))
                         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
                     if (parcRecords.length > 0) {
-                        buildingParcsData.push({
+                        return {
                             latest: parcRecords[0],
                             prev: parcRecords[1] || {}
-                        });
+                        };
                     }
-                }
+                    return null;
+                }).filter(Boolean); // Remove nulls
 
                 if (buildingParcsData.length === 0) {
                     return {
-                        ferme: ferme.id, batiment: bIdx, age: '-', effectif: '-', poids_actuel: '-',
+                        ferme: ferme.name,
+                        batiment: bat.name,
+                        age: '-', effectif: '-', poids_actuel: '-',
                         poids_gain: '-', guide: '-', homog_pct: '-', ration_guide: '-',
                         ration_actuel: '-', ration_diff: '-', ration_proch: '-', mort_pct: '-', obsevt: ''
                     };
@@ -93,8 +85,8 @@ const FermesView = () => {
                 const mortPct = totalEff > 0 ? ((totalMortN / totalEff) * 100).toFixed(1) : '-';
 
                 return {
-                    ferme: ferme.id,
-                    batiment: bIdx,
+                    ferme: ferme.name,
+                    batiment: bat.name,
                     age: buildingParcsData[0].latest.age || '-',
                     effectif: totalEff || '-',
                     poids_actuel: avgPoids > 0 ? avgPoids.toFixed(0) : '-',
@@ -108,8 +100,8 @@ const FermesView = () => {
                     mort_pct: mortPct,
                     obsevt: buildingParcsData.find(d => d.latest.observation)?.latest.observation || ''
                 };
-            })
-        );
+            });
+        });
     }, [fermes, allData]);
 
     const handleFermeClick = (fermeId) => {
@@ -127,7 +119,7 @@ const FermesView = () => {
         };
         const fetchAllData = async () => {
             const data = await elevageService.getElevages();
-            setAllData(data.filter(item => !item.deleted));
+            setAllData(data.filter(item => !(item.deleted || item.is_deleted)));
         };
         fetchFermes();
         fetchAllData();
@@ -250,8 +242,8 @@ const FermesView = () => {
                     <div
                         onClick={() => setShowSummary(!showSummary)}
                         className={`border px-4 py-2 rounded-xl flex items-center gap-3 cursor-pointer transition-all duration-300 whitespace-nowrap ${showSummary
-                                ? 'bg-blue-600 border-blue-700 text-white shadow-inner scale-[0.98]'
-                                : 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300 shadow-sm hover:shadow-md'
+                            ? 'bg-blue-600 border-blue-700 text-white shadow-inner scale-[0.98]'
+                            : 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300 shadow-sm hover:shadow-md'
                             }`}
                     >
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm transition-colors flex-shrink-0 ${showSummary ? 'bg-white text-blue-600' : 'bg-blue-500 text-white'
@@ -268,71 +260,7 @@ const FermesView = () => {
                         </div>
                     </div>
 
-                    {isAdmin && (
-                        <div className="relative">
-                            <Button
-                                onClick={() => setShowCreateMenu(!showCreateMenu)}
-                                className="flex items-center gap-2 w-full sm:w-auto justify-center whitespace-nowrap"
-                            >
-                                <Plus size={20} />
-                                Créer
-                            </Button>
 
-                            {showCreateMenu && (
-                                <>
-                                    {/* Backdrop */}
-                                    <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => setShowCreateMenu(false)}
-                                    />
-
-                                    {/* Dropdown Menu */}
-                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
-                                        <div className="py-1">
-                                            <button
-                                                onClick={handleCreateFerme}
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                            >
-                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                    <Home size={18} className="text-blue-600" />
-                                                </div>
-                                                <div className="text-left">
-                                                    <div className="font-medium">Nouvelle Ferme</div>
-                                                    <div className="text-xs text-gray-500">Créer une ferme</div>
-                                                </div>
-                                            </button>
-
-                                            <button
-                                                onClick={handleCreateBatiment}
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
-                                            >
-                                                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                    <Building size={18} className="text-green-600" />
-                                                </div>
-                                                <div className="text-left">
-                                                    <div className="font-medium">Nouveau Bâtiment</div>
-                                                    <div className="text-xs text-gray-500">Ajouter un bâtiment</div>
-                                                </div>
-                                            </button>
-
-                                            <button
-                                                onClick={handleCreateParc}
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
-                                            >
-                                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                    <Grid3x3 size={18} className="text-purple-600" />
-                                                </div>
-                                                <div className="text-left">
-                                                    <div className="font-medium">Nouveau Parc</div>
-                                                    <div className="text-xs text-gray-500">Créer un parc</div>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
                 </div>
             </div>
 
